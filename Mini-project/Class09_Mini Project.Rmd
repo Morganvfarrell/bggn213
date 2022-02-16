@@ -1,0 +1,351 @@
+---
+title: "Class09_Mini Project"
+author: "Morgan Farrell"
+date: "2/8/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This project is examining patient data from fine needle aspiration of breast mass. The resulting data was collected from microscope analysis of cells to determine if they were normal or not. 
+
+Importing the data set make sure to save the WisconsinCancer.csv file to the mini project directory
+```{r}
+# Save your input data file into your Project directory
+fna.data <- "WisconsinCancer.csv"
+
+# Complete the following code to input the data and store as wisc.df
+wisc.df <- read.csv(fna.data, row.names=1) #use read.csv to read the imported file
+wisc.df.sub <- subset(wisc.df[,1:31]) #My import data added and x column to the end of the file to remove this I subsetted the data to exclude that added column
+```
+
+View the file using 'head()' or by clicking the object and examining the table
+```{r}
+head(wisc.df.sub)
+```
+
+Omit the first column which is the expert's diagnosis, since we will be determining that ourselves from the data
+```{r}
+# We can use -1 here to remove the first column
+wisc.data <- wisc.df.sub[,-1]
+```
+
+Store the diagnosis into a separate factor vector to use for plotting later
+```{r}
+# Create diagnosis vector for later 
+diagnosis <- factor(wisc.df.sub[,1])
+```
+
+>Q1. How many observations are in this dataset?
+
+```{r}
+dim(wisc.data) # Displays the rows then columns
+nrow(wisc.data) # Gives exactly the number of rows or obersvations
+```
+There are 569 patient samples or observations with 3 different categories describing the patient sample
+
+>Q2. How many of the observations have a malignant diagnosis?
+
+```{r}
+?grep()
+M <- grep(pattern="M", x= diagnosis)#returns all of the observations that were marked at M
+length(M) # Use length to count the observations
+```
+It looks like there were 212 samples that were malignant
+
+>Q3. How many variables/features in the data are suffixed with _mean?
+
+```{r}
+mean <- grep(pattern="_mean",x= colnames(wisc.data)) # use grep to find the pattern _mean, have it specifically look at the column names of our data set 
+length(mean) # use length to calculate the total number of matches
+```
+There were 10 variables with the suffix mean
+
+```{r}
+# Check column means and standard deviations
+colMeans(wisc.data)
+
+apply(wisc.data,2,sd)
+
+```
+
+
+```{r}
+# Perform PCA on wisc.data by completing the following code
+wisc.pr <- prcomp(x= wisc.data, scale = TRUE) #scale the data 
+summary(wisc.pr)
+```
+
+>Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
+
+PC1 captures 44.27% of the variance.
+
+>Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+PC1, PC2, and PC3 capture 72.64% of the variance of the data. 
+
+>Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+The first 7 principal components explains 91% of the variation from this data set. 
+
+# First plot of the data using 'biplot()'
+
+```{r}
+biplot(wisc.pr)
+```
+> Q7. What stands out to you about this plot? Is it easy or difficult to understand? Why?
+
+It looks like the black data points representing the patient samples are clustered in the middle and the variables are scattered farther away from the center denoted by the arrows. 
+
+```{r}
+# Scatter plot observations by components 1 and 2
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col= diagnosis, 
+     xlab = "PC1", ylab = "PC2")
+```
+> Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+```{r}
+# Repeat for components 1 and 3
+plot(wisc.pr$x[, c(1,3) ], col = diagnosis, 
+     xlab = "PC1", ylab = "PC3")
+```
+The plot overall has shifted downward towards PC1, additionally, the black points "normal" are more clustered together. 
+
+```{r}
+# Create a data.frame for ggplot
+df <- as.data.frame(wisc.pr$x)
+df$diagnosis <- diagnosis
+
+# Load the ggplot2 package
+library(ggplot2)
+
+# Make a scatter plot colored by diagnosis
+ggplot(df) + 
+  aes(PC1, PC2, col= diagnosis) + 
+  geom_point()
+```
+Variance is calculated by the square of the standard deviation
+```{r}
+# Calculate variance of each component
+pr.var <- wisc.pr$sdev^2
+head(pr.var)
+```
+
+```{r}
+# Variance explained by each principal component: pve
+pve <- pr.var / sum(pr.var)
+
+# Plot variance explained for each principal component
+plot(pve, xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained", 
+     ylim = c(0, 1), type = "o")
+```
+```{r}
+# Alternative scree plot of the same data, note data driven y-axis
+barplot(pve, ylab = "Precent of Variance Explained",
+     names.arg=paste0("PC",1:length(pve)), las=2, axes = FALSE)
+axis(2, at=pve, labels=round(pve,2)*100 )
+```
+
+```{r}
+## ggplot based graph
+#install.packages("factoextra")
+library(factoextra)
+fviz_eig(wisc.pr, addlabels = TRUE)
+```
+This graph is much easier to see which principal component explains the data
+
+> Q9. For the first principal component, what is the component of the loading vector (i.e. wisc.pr$rotation[,1]) for the feature concave.points_mean?
+
+-0.26085376
+
+```{r}
+wisc.pr$rotation[,1]
+#concave.points_mean
+#-0.26085376
+```
+
+The components are ordered from most variance explained to least variance explained
+
+> Q10. What is the minimum number of principal components required to explain 80% of the variance of the data?
+
+Referring to the graph made with factoextra, it takes 5 principal components to explain 80% of the variance in the data. 
+
+# Hierarchical Clustering
+
+Use function 'scale()'
+```{r}
+# Scale the wisc.data data using the "scale()" function
+data.scaled <- scale(wisc.data)
+```
+
+Use function 'dist()'
+```{r}
+data.dist <- dist(data.scaled)
+```
+
+Use function 'hclust()' and tell it what type of linkage you want to use
+```{r}
+wisc.hclust <- hclust(data.dist, method = "complete")
+```
+
+> Q11. Using the plot() and abline() functions, what is the height at which the clustering model has 4 clusters?
+
+```{r}
+plot(wisc.hclust)
+abline(h=20, col="red", lty=2) # It looks like at 20 it differentiates into 4 clusters
+```
+
+
+```{r}
+wisc.hclust.clusters <- cutree(wisc.hclust, k = 4)
+table(wisc.hclust.clusters, diagnosis)
+```
+
+> Q12. Can you find a better cluster vs diagnoses match by cutting into a different number of clusters between 2 and 10?
+
+If we choose 2 then it separates all of our diagnoses to either 0 or 2 matching benign or malignant, with not false positives or false negatives. 
+```{r}
+wisc.hclust.clusters.test <- cutree(wisc.hclust, k = 2) 
+table(wisc.hclust.clusters.test, diagnosis)
+```
+
+> Q13. Which method gives your favorite results for the same data.dist dataset? Explain your reasoning.
+
+```{r}
+wisc.hclust.single <- hclust(data.dist, method = "single")
+plot(wisc.hclust.single)
+
+```
+
+```{r}
+wisc.hclust.average <- hclust(data.dist, method = "average")
+plot(wisc.hclust.average)
+```
+```{r}
+wisc.hclust.ward.D2 <- hclust(data.dist, method = "ward.D2")
+plot(wisc.hclust.ward.D2)
+```
+I would say that either Ward.D2 or Complete are my favorite methods, because they were able to differentiate the two groups the easiest. They are also much clearer in how they separate the groups so visually they are easier to read. 
+
+# Optional K-means clustering
+
+```{r}
+wisc.km <- kmeans(wisc.data, centers= 2, nstart= 20)
+table(wisc.km$cluster, diagnosis)
+```
+
+> Q14. How well does k-means separate the two diagnoses? How does it compare to your hclust results?
+
+k-means is able to separate the Benign diagnosis better since there is only one sample that doesn't group with B. For the Malignant diagnosis there were most of the samples grouped into the 1st cluster, but there was still a lot of samples grouped into the second cluster. So it wasn't perfect in sorting the diagnoses. 
+
+```{r}
+# Compare k-means to hierarchical clustering
+table(wisc.hclust.clusters, wisc.km$cluster)
+```
+From this clustering it looks like from hierarchical clustering groups 1 and 4 belong to group 1 and then 3 belongs to group 2. Group 2 has some patient samples for each so it could be more in group 2 than 1. 
+
+
+# Combining Methods
+
+Create a hierarchical clustering model using ward.D2 which is similar to PCA since they are both created on multidimensional analysis
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[, 1:7]), method = "ward.D2")
+plot(wisc.pr.hclust)
+```
+We see two clear groups in this graph
+
+
+```{r}
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+```
+Gives us two clear groups
+
+```{r}
+table(grps, diagnosis)
+```
+
+Let's plot the results to see the difference in grp
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=diagnosis)
+```
+
+```{r}
+g <- as.factor(grps)
+levels(g)
+```
+
+```{r}
+g <- relevel(g,2)
+levels(g)
+```
+
+```{r}
+# Plot using our re-ordered factor 
+plot(wisc.pr$x[,1:2], col=g)
+```
+
+```{r}
+#library(rgl)
+#plot3d(wisc.pr$x[,1:3], xlab="PC 1", ylab="PC 2", zlab="PC 3", cex=1.5, size=1, type="s", col=grps)
+```
+
+```{r}
+## Use the distance along the first 7 PCs for clustering i.e. wisc.pr$x[, 1:7]
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[, 1:7]), method="ward.D2")
+
+```
+
+```{r}
+wisc.pr.hclust.clusters <- cutree(wisc.pr.hclust, k=2)
+table(wisc.pr.hclust.clusters, diagnosis)
+```
+
+> Q15. How well does the newly created model with four clusters separate out the two diagnoses?
+
+The newly created model does a fairly good job clustering the two diagnosis, but there are ~24-28 patients that are clustering outside of what their diagnoses were. These samples probably were between the two centers of the clusters and therefore could be grouped either way by the program. Opposed to an expert that was using two distinct categories to separate samples. 
+
+
+> Q16. How well do the k-means and hierarchical clustering models you created in previous sections (i.e. before PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.km$cluster and wisc.hclust.clusters) with the vector containing the actual diagnoses.
+
+```{r}
+table(wisc.km$cluster, diagnosis)
+table(wisc.hclust.clusters, diagnosis)
+```
+
+The k-means model did a better job seperating the two groups, however we told it to give two centers. 
+
+On the other hand the hierarchical clustering model separated our samples into 4 groups, but the majority of the sample are falling into either the Benign or Malignant. There were about ~50 samples not grouped compared to k-means had 83 samples not grouped under the two diagnoses. 
+
+
+# Sensitivity
+
+>Q17. Which of your analysis procedures resulted in a clustering model with the best specificity? How about sensitivity?
+
+k-means was the most specific because it was able to group the benign patients the most closely, only 1 patient miss categorized. 
+
+The hierarchical ward.D2 model was the most sensitive since it was able to sort 188 patient samples into malignant when there was a total of 212 malignant samples, giving the most correctly detectec ill patients. 
+
+# Prediction
+
+```{r}
+#url <- "new_samples.csv"
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=g)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```
+> Q18. Which of these new patients should we prioritize for follow up based on your results?
+
+We should focus on patients in cluster 2, since they are clustered with more variation. The separation between the two groups is seen with PCA1 which explains the majority of the variation in the data set. It is likely that these samples are malignant since they would have more variation opposed to normal samples which would likely cluster closely toghther. 
