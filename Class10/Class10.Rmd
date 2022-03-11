@@ -1,0 +1,82 @@
+---
+title: "Class10"
+author: "Morgan Farrell"
+date: "2/18/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+#Genotype data from 1000 Genomes Project 
+
+Download MXL dataset from https://uswest.ensembl.org/Homo_sapiens/Variation/Sample?db=core;r=17:39894595-39895595;v=rs8067378;vdb=variation;vf=105535077#373531_tablePanel
+
+```{r}
+mxl <- read.csv("373531-SampleGenotypes.csv")
+head(mxl)
+```
+
+Find the frequency of G|G homozygous gentoypes in the dataset
+```{r}
+table(mxl$Genotype..forward.strand.)/ nrow(mxl)
+```
+
+Download the GBR dataset
+```{r}
+gbr <- read.csv("GBR-SampleGenotypes.csv")
+head(gbr)
+```
+
+Same calculation of G|G with the GBR dataset
+```{r}
+table(gbr$Genotype..forward.strand.)/ nrow(gbr)
+```
+
+# Inital RNA-seq Analysis
+
+## Question 13
+
+Using read.csv first
+```{r}
+tbl <- read.csv("rs8067378_ENSG00000172057.6.csv", header= TRUE, sep= "")
+```
+
+Second method using read.table
+```{r}
+x <- read.table("rs8067378_ENSG00000172057.6.csv")
+head(x)
+```
+
+How many of each genoytpe
+```{r}
+table(x$geno)
+```
+
+Find where all the G|G genotypes are
+```{r}
+x[x$geno == "G/G",]
+```
+
+Summary statistics
+```{r}
+summary(x[x$geno == "G/G",])
+```
+Check the summary of the other genoytpes
+```{r}
+#A/G
+summary(x[x$geno == "A/G",])
+```
+
+```{r}
+#A/A
+summary(x[x$geno == "A/A",])
+```
+## Question 14
+
+make a box plot
+```{r}
+library(ggplot2)
+ggplot(x, aes(geno,exp, fill=geno))+
+  geom_boxplot(notch=TRUE) +
+  geom_jitter(width=0.2, size= 0.5)
+```
+

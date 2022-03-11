@@ -1,0 +1,255 @@
+---
+title: "Class12_Miniproject"
+author: "Morgan Farrell"
+date: "2/25/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Roadmap for today
+
+1.  Input our counts and metadata -check the format and fix if necessary
+2.  Run differential expression analysis
+
+-   setup that object required by deseq()
+-   run deseq
+
+3.  Add annotation
+
+-   gene names and entrez ids
+
+4.  Volcano plot
+5.  Pathway analysis
+6.  Save our results
+
+Load DESeq2
+
+```{r load packages, message=FALSE}
+library(DESeq2)
+library(ggplot2)
+library(AnnotationDbi)
+```
+
+## Input metadata and count data
+
+```{r import data}
+metaFile <- "GSE37704_metadata.csv"
+countFile <- "GSE37704_featurecounts.csv"
+#metaFile <- read.csv("GSE37704_metadata.csv") #alternative read csv option
+#countFile <- read.csv("GSE37704_featurecounts.csv")
+
+# Import metadata and take a peak
+colData = read.csv(metaFile, row.names=1)
+countData = read.csv(countFile, row.names=1)
+head(colData)
+head(countData)
+```
+
+# Q. Complete the code below to remove the troublesome first column from countData
+
+Check that they are the same
+
+```{r}
+if(all(colData$id == colnames(countData))){
+  cat("yep")
+}
+```
+
+Remove the length column
+
+```{r}
+# Note we need to remove the odd first $length col
+countData_rm <- as.matrix(countData[,-1])
+head(countData_rm)
+```
+
+# Q. Complete the code below to filter countData to exclude genes (i.e. rows) where we have 0 read count across all samples (i.e. columns).
+
+Tip: What will rowSums() of countData return and how could you use it in this context?
+
+```{r}
+#Remove the 0s from the dataset
+counts <- countData_rm[rowSums(countData_rm) != 0,]
+head(counts)
+```
+
+Create PCA metrics
+
+```{r pca}
+pca <- prcomp(t(counts), scale=TRUE)
+summary(pca)
+```
+
+```{r pca plot}
+plot(pca$x[,1:2], col=as.factor(colData$condition), pch=16)
+
+#ggplot(as.matrix.data.frame(pca), aes(x=pca$x, y=pca$y)) +
+#geom_point()
+```
+
+# DESeq Analysis
+
+Like lots of bioconductor functions it wants our data in an organized way.
+
+```{r DESeq}
+dds = DESeqDataSetFromMatrix(countData=counts,
+                             colData=colData,
+                             design=~condition)
+dds = DESeq(dds)
+```
+
+```{r}
+dds
+```
+
+# Q. Call the summary() function on your results to get a sense of how many genes are up or down-regulated at the default 0.1 p-value cutoff
+
+```{r results DESeq}
+res = results(dds)
+summary(res)
+```
+
+# Add annotations ysing the 'AnnotationDbi()' function
+
+Add columns for Symbol, Entrez and Genenames(names)
+
+```{r annotations}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+
+columns(org.Hs.eg.db)
+
+res$symbol = mapIds(org.Hs.eg.db,
+                    keys=row.names(res), 
+                    keytype="ENSEMBL",
+                    column="SYMBOL",
+                    multiVals="first")
+
+res$entrez = mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="ENTREZID",
+                    multiVals="first")
+
+res$name =   mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="GENENAME",
+                    multiVals="first")
+
+head(res, 10)
+```
+
+# Q. Finally for this section let's reorder these results by adjusted p-value and save them to a CSV file in your current project directory.
+
+```{r order padj}
+# Order by p-value
+res = res[order(res$pvalue),]
+#Save to CSV
+write.csv(res, file ="deseq_results_miniproject.csv")
+```
+
+# Volcano Plot
+
+```{r basic volcano}
+plot( res$log2FoldChange, -log(res$padj) )
+```
+
+# Q. Improve this plot by completing the below code, which adds color and axis labels
+
+```{r volcano color}
+# Make a color vector for all genes
+mycols <- rep("gray", nrow(res) )
+
+# Color red the genes with absolute fold change above 2
+mycols[ abs(res$log2FoldChange) > 2 ] <- "red"
+
+# Color blue those with adjusted p-value less than 0.01
+#  and absolute fold change more than 2
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+
+plot( res$log2FoldChange, -log(res$padj), col= mycols, xlab="Log2(FoldChange)", ylab="-Log(P-value)" )
+```
+
+# Lets make a plot with 'EnhancedVolcano()' package
+
+Load package
+
+```{r load EnhancedVolcano}
+library(EnhancedVolcano)
+```
+
+```{r EnhancedVolcano plot}
+x <- as.data.frame(res)
+x$big <- abs(res$log2FoldChange)>2
+
+EnhancedVolcano(x,
+                x = 'log2FoldChange',
+                y = 'pvalue',
+                lab=x$symbol)
+
+ggplot(x)+
+  aes(x$log2FoldChange, -log(padj), col= big) +
+  geom_point()
+```
+
+# Pathway Analysis
+
+```{r}
+library(pathview)
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+# Examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+```{r}
+# Get the results
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+attributes(keggres)
+```
+
+```{r}
+# Look at the first few down (less) pathways
+head(keggres$less)
+```
+
+# Make the pathway diagram
+
+```{r pathway diagram}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+```
+
+![](hsa04110.pathview.png)
+
+
+# Gene Ontology, Reactome, etc. 
+
+To use GO just pass in the GO genesets to the gage function in place of KEGG
+```{r GO analysis}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+lapply(gobpres, head)
+```
+

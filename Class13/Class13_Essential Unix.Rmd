@@ -1,0 +1,110 @@
+---
+title: "Class13"
+author: "Morgan Farrell"
+date: "3/2/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Print working directory
+pwd 
+
+List what is files that are in this folder
+ls
+
+Change directory
+cd
+
+make directory
+mkdir
+
+move up ..
+cd ..
+
+Absolute path specifies from the User 
+/User/morganfarrell/
+
+~ gives you the short cut 
+~/Desktop
+
+/ is the root of the computer
+
+touch creates a file- make sure there are no spaces
+touch my_text_file.txt
+
+remove file 
+rm
+
+rm -r ask me first before deleting
+
+Edit files 
+nano 
+
+AWS log in through UCSD
+Launch instances
+M5.2xlarge
+
+My key pair
+bggn213_mvfarrell
+
+The green box after launching the instances, my unique code INstance ID
+i-03956ea58ff4a2c9a 
+
+Open a secure shell for the computer
+ssh -i "bggn213_mvfarrell.pem" ubuntu@ec2-54-244-176-172.us-west-2.compute.amazonaws.com 
+
+Lock down the file 
+chmod 400 ~/Downloads/bggn213_mvfarrell.pem
+
+To access the computer
+ssh user@thecomputer 
+
+This is my computer
+ec2-54-244-176-172.us-west-2.compute.amazonaws.com
+
+This is my ssh command
+ssh -i "~/Downloads/bggn213_mvfarrell.pem" ubuntu@ec2-54-244-176-172.us-west-2.compute.amazonaws.com
+
+Pull up manual 
+man 
+
+download stuff 
+curl 
+
+How many sequences are in this file 
+grep -c ">" mouse.1.protein.faa
+
+to view or see the file 
+less
+
+Redirect 
+>
+
+Append 
+>>
+
+How to alter a command once you run it 
+ctrl Z pause 
+fg foreground
+ctrl C kills it
+
+all the things that are running
+top
+
+Add & to the end of code it automatically adds it to the background 
+
+copy within your computer
+cp
+
+
+scp secure copy
+source destination
+need the complete path for the destination outside your virtual machine
+bg background 
+
+ctrl A start of the line
+ctrl E end of the line
+
+How to securely move a file from ubutu to your computer
+scp -i ~/Downloads/bggn213_mvfarrell.pem ubuntu@ec2-54-244-176-172.us-west-2.compute.amazonaws.com:~/work/mm-second.x.zebrafish.tsv .

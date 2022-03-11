@@ -1,0 +1,97 @@
+---
+title: "Graphs for Find a Gene"
+author: "Morgan Farrell"
+date: "2/22/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Install proper packages
+```{r}
+library(bio3d)
+#install.packages("pheatmap")
+library(pheatmap)
+```
+
+# Read in the alignment that was converted in SEAVIEW from the original CLUSTALW format
+```{r}
+romo1 <- read.fasta("alignment-converted fasta.fst")
+romo1
+```
+#Identify any conserved proteins
+```{r}
+conv <- conserv(romo1)
+plot(conv, typ="h", xlab="Alignment Position", ylab="Conservation Score")
+```
+
+# Begin building heatmap based on conservation scores
+```{r}
+identity_romo1 <- seqidentity(romo1)
+identity_romo1
+```
+
+# Assemble heat map
+```{r}
+pheatmap(identity_romo1, main="Heatmap of Predicted ROMO1", scale="none")
+```
+#Make consensus sequence from alignment
+```{r}
+#cons_romo1 <- consensus(romo1)
+#cons_romo1
+```
+My consensus sequence has too many gaps to use. I'll need to find the sequence with the highest identity to the others and use that
+
+#Find highest identity sequence
+
+```{r}
+#install.packages("matrixStats")
+library(matrixStats)
+```
+
+```{r}
+romo1_wo_self <- 1-identity_romo1
+romo1_noself_matrix <- as.matrix(romo1_wo_self)
+romo1_noself_matrix
+```
+
+```{r}
+#install.packages("dplyr")
+#library(dplyr)
+```
+
+```{r}
+romo1_noself_matrix$row_maximum = rowMaxs(romo1_noself_matrix)
+romo1_noself_matrix
+```
+
+```{r}
+pheatmap(1-identity_romo1)
+```
+I think the brown sea anemone has the highest sequence identity
+
+#R/Bio3D to blast online, find the top 3 unique hi
+```{r}
+romo1_bsa_fasta <- read.fasta("brown sea anemone.fst")
+romo1_bsa_blast <- blast.pdb(romo1_bsa_fasta)
+```
+
+```{r}
+romo1_bsa_blast
+```
+
+
+#Try again with different sequence to see if I can get higher e values
+
+```{r}
+romo1_cc_fasta <- read.fasta("cauliflower coral.fst")
+romo1_cc_blast <- blast.pdb(romo1_cc_fasta)
+romo1_cc_blast
+```
+
+```{r}
+romo1_m_fasta <- read.fasta("mouse.fst")
+romo1_m_blast <- blast.pdb(romo1_m_fasta)
+romo1_m_blast
+```
+

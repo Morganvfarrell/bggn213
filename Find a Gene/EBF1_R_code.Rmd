@@ -1,0 +1,94 @@
+---
+title: "FindaGene_EBF1"
+author: "Morgan Farrell"
+date: "2/28/2022"
+output: html_document
+---
+
+# Install proper packages
+```{r}
+library(bio3d)
+#install.packages("pheatmap")
+library(pheatmap)
+```
+
+
+# Read in the alignment that was converted in SEAVIEW from the original CLUSTALW format
+```{r}
+ebf1 <- read.fasta("EBF1-aln-clustalw.fst")
+ebf1
+```
+
+#Identify any conserved proteins
+```{r}
+conv <- conserv(ebf1)
+plot(conv, typ="h", xlab="Alignment Position", ylab="Conservation Score")
+```
+
+
+# Begin building heatmap based on conservation scores
+```{r}
+identity_ebf1 <- seqidentity(ebf1)
+identity_ebf1
+```
+
+
+# Assemble heat map
+```{r}
+pheatmap(identity_ebf1, main="Heatmap of Predicted ROMO1", scale="none")
+```
+
+#Make consensus sequence from alignment
+```{r}
+cons_ebf1 <- consensus(ebf1)
+cons_ebf1
+```
+My consensus sequence has too many gaps to use. I'll need to find the sequence with the highest identity to the others and use that
+
+#Find highest identity sequence
+
+```{r}
+#install.packages("matrixStats")
+library(matrixStats)
+```
+
+```{r}
+ebf1_wo_self <- 1-identity_ebf1
+ebf1_noself_matrix <- as.matrix(ebf1_wo_self)
+ebf1_noself_matrix
+```
+
+```{r}
+ebf1_noself_matrix$row_maximum = rowMaxs(ebf1_noself_matrix)
+ebf1_noself_matrix
+```
+
+```{r}
+pheatmap(1-identity_ebf1)
+```
+
+The Sea Hare had a high sequence identity let's try that as the representative sequence
+
+#R/Bio3D to blast online, find the top 3 unique hi
+```{r}
+ebf1_sh_fasta <- read.fasta("SeaHare.fst")
+ebf1_sh_blast <- blast.pdb(ebf1_sh_fasta)
+```
+
+```{r}
+ebf1_sh_blast
+```
+
+```{r}
+library(bio3d)
+plot.blast(ebf1_sh_blast)
+```
+
+```{r}
+#ids <- as.matrix(ebf1_sh_blast$hit.tbl[,2])
+ids <- c("3MLP", "3N50_A", "3MUJ", "3MQI", "3LYR", "3MLN")
+pdb.annotate(ids)
+```
+
+
+
